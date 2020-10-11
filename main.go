@@ -32,7 +32,6 @@ func (l LevelHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
 
 func main() {
 	zerolog.TimestampFieldName = "TimeStamp"
-	zerolog.LevelFieldName = "severity"
 
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger().Hook(LevelHook{})
 	r := chi.NewRouter()
