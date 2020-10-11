@@ -42,7 +42,7 @@ func main() {
 			trace := r.Header.Get("X-Cloud-Trace-Context")
 			splits := strings.Split(trace, "/")
 			l := logger.With().Logger()
-			if len(splits) > 2 {
+			if len(splits) >= 2 {
 				l = l.With().Str("trace", "project/buld-pack-test/traces/"+splits[0]).Str("span", splits[1]).Logger()
 			}
 
