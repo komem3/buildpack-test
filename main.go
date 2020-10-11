@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
@@ -32,7 +33,7 @@ func (l LevelHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
 }
 
 func main() {
-	zerolog.TimestampFieldName = "timeStamp"
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 
 	logger := zerolog.New(os.Stderr).With().Timestamp().Logger().Hook(LevelHook{})
 	r := chi.NewRouter()
@@ -45,9 +46,9 @@ func main() {
 			if len(splits) >= 2 {
 				spans := strings.Split(splits[1], ";")
 				if len(spans) >= 2 {
-					l = l.With().Str("span", spans[0]).Bool("traceSampled", spans[1] == "o=1").Logger()
+					l = l.With().Str("logging.googleapis.com/spanId", spans[0]).Bool("traceSampled", spans[1] == "o=1").Logger()
 				}
-				l = l.With().Str("trace", "projects/buld-pack-test/traces/"+splits[0]).Logger()
+				l = l.With().Str("logging.googleapis.com/trace", "projects/buld-pack-test/traces/"+splits[0]).Logger()
 			}
 
 			r = r.WithContext(l.WithContext(r.Context()))
