@@ -7,16 +7,18 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	"github.com/go-chi/chi"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
-type LevelHook struct{}
+type levelHook struct{}
 
-var _ zerolog.Hook = (*LevelHook)(nil)
+var _ zerolog.Hook = (*levelHook)(nil)
 
 // Run is implemented Hook
-func (l LevelHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
+func (l levelHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
 	var levelName string
 
 	switch level {
@@ -35,7 +37,10 @@ func (l LevelHook) Run(e *zerolog.Event, level zerolog.Level, _ string) {
 func main() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 
-	logger := zerolog.New(os.Stderr).With().Timestamp().Logger().Hook(LevelHook{})
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger().Hook(levelHook{})
+	if !metadata.OnGCE() {
+		logger = logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
 	r := chi.NewRouter()
 
 	r.Use(func(next http.Handler) http.Handler {
@@ -46,7 +51,7 @@ func main() {
 			if len(splits) >= 2 {
 				spans := strings.Split(splits[1], ";")
 				if len(spans) >= 2 {
-					l = l.With().Str("logging.googleapis.com/spanId", spans[0]).Bool("traceSampled", spans[1] == "o=1").Logger()
+					l = l.With().Str("logging.googleapis.com/spanId", spans[0]).Bool("logging.googleapis.com/trace_sampled", spans[1] == "o=1").Logger()
 				}
 				l = l.With().Str("logging.googleapis.com/trace", "projects/buld-pack-test/traces/"+splits[0]).Logger()
 			}
@@ -59,8 +64,13 @@ func main() {
 		params := r.URL.Query()
 		logger := zerolog.Ctx(r.Context())
 		logger.Debug().Interface("params", params).Msg("request param")
-		err := json.NewEncoder(w).Encode(params)
-		logger.Error().Err(err).Msg("marshal error")
+		_, err := os.Open("nofile")
+		err = errors.Wrap(err, "open file")
+		logger.Err(err).Msg("openfile")
+
+		if err = json.NewEncoder(w).Encode(params); err != nil {
+			logger.Error().Err(err).Msg("marshal error")
+		}
 	})
 
 	port := os.Getenv("PORT")
