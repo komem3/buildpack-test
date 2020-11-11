@@ -68,6 +68,10 @@ func main() {
 		err = errors.Wrap(err, "open file")
 		logger.Err(err).Msg("openfile")
 
+		if len(params) == 0 {
+			w.Write([]byte("no params"))
+			return
+		}
 		if err = json.NewEncoder(w).Encode(params); err != nil {
 			logger.Error().Err(err).Msg("marshal error")
 		}
